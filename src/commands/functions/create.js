@@ -2,10 +2,11 @@ const cp = require('child_process')
 const fs = require('fs')
 const path = require('path')
 const process = require('process')
+const { promisify } = require('util')
 
 const { flags: flagsLib } = require('@oclif/command')
 const chalk = require('chalk')
-const copy = require('copy-template-dir')
+const copy = promisify(require('copy-template-dir'))
 const fuzzy = require('fuzzy')
 const inquirer = require('inquirer')
 const inquirerAutocompletePrompt = require('inquirer-autocomplete-prompt')
@@ -32,8 +33,7 @@ const templatesDir = path.resolve(__dirname, '../../functions-templates')
 class FunctionsCreateCommand extends Command {
   async run() {
     const { flags, args } = this.parse(FunctionsCreateCommand)
-    const { config } = this.netlify
-    const functionsDir = ensureFunctionDirExists(this, flags, config)
+    const functionsDir = await ensureFunctionDirExists(this)
 
     /* either download from URL or scaffold from template */
     const mainFunc = flags.url ? downloadFromURL : scaffoldFromTemplate
@@ -50,7 +50,7 @@ class FunctionsCreateCommand extends Command {
 FunctionsCreateCommand.args = [
   {
     name: 'name',
-    description: 'name of your new function file inside your functions folder',
+    description: 'name of your new function file inside your functions directory',
   },
 ]
 
@@ -196,23 +196,67 @@ const pickTemplate = async function () {
 
 const DEFAULT_PRIORITY = 999
 
-/* get functions dir (and make it if necessary) */
-const ensureFunctionDirExists = function (context, flags, config) {
-  const functionsDir = config.build && config.build.functions
-  if (!functionsDir) {
-    context.log(`${NETLIFYDEVLOG} No functions folder specified in netlify.toml`)
-    process.exit(1)
+/**
+ * Get functions directory (and make it if necessary)
+ * @param {FunctionsCreateCommand} context
+ * @returns {string | never} - functions directory or throws an error
+ */
+const ensureFunctionDirExists = async function (context) {
+  const { api, config, site } = context.netlify
+  const siteId = site.id
+  const { log } = context
+  let functionsDirHolder = config.functionsDirectory
+
+  if (!functionsDirHolder) {
+    log(`${NETLIFYDEVLOG} functions directory not specified in netlify.toml or UI settings`)
+
+    if (!siteId) {
+      context.error(`${NETLIFYDEVERR} No site id found, please run inside a site directory or \`netlify link\``)
+    }
+
+    const { functionsDir } = await inquirer.prompt([
+      {
+        type: 'input',
+        name: 'functionsDir',
+        message:
+          'Enter the path, relative to your site’s base directory in your repository, where your functions should live:',
+        default: 'netlify/functions',
+      },
+    ])
+
+    functionsDirHolder = functionsDir
+
+    try {
+      log(`${NETLIFYDEVLOG} updating site settings with ${chalk.magenta.inverse(functionsDirHolder)}`)
+
+      await api.updateSite({
+        siteId: site.id,
+        body: {
+          build_settings: {
+            functions_dir: functionsDirHolder,
+          },
+        },
+      })
+
+      log(`${NETLIFYDEVLOG} functions directory ${chalk.magenta.inverse(functionsDirHolder)} updated in site settings`)
+    } catch (error) {
+      throw error('Error updating site settings')
+    }
   }
-  if (!fs.existsSync(functionsDir)) {
-    context.log(
-      `${NETLIFYDEVLOG} functions folder ${chalk.magenta.inverse(
-        functionsDir,
-      )} specified in netlify.toml but folder not found, creating it...`,
+
+  if (!fs.existsSync(functionsDirHolder)) {
+    log(
+      `${NETLIFYDEVLOG} functions directory ${chalk.magenta.inverse(
+        functionsDirHolder,
+      )} does not exist yet, creating it...`,
     )
-    fs.mkdirSync(functionsDir)
-    context.log(`${NETLIFYDEVLOG} functions folder ${chalk.magenta.inverse(functionsDir)} created`)
+
+    fs.mkdirSync(functionsDirHolder, { recursive: true })
+
+    log(`${NETLIFYDEVLOG} functions directory ${chalk.magenta.inverse(functionsDirHolder)} created`)
   }
-  return functionsDir
+
+  return functionsDirHolder
 }
 
 // Download files from a given github URL
@@ -220,6 +264,7 @@ const downloadFromURL = async function (context, flags, args, functionsDir) {
   const folderContents = await readRepoURL(flags.url)
   const [functionName] = flags.url.split('/').slice(-1)
   const nameToUse = await getNameFromArgs(args, flags, functionName)
+
   const fnFolder = path.join(functionsDir, nameToUse)
   if (fs.existsSync(`${fnFolder}.js`) && fs.lstatSync(`${fnFolder}.js`).isFile()) {
     context.log(
@@ -303,11 +348,12 @@ const scaffoldFromTemplate = async function (context, flags, args, functionsDir)
     const pathToTemplate = path.join(templatesDir, lang, templateName)
     if (!fs.existsSync(pathToTemplate)) {
       throw new Error(
-        `there isnt a corresponding folder to the selected name, ${templateName} template is misconfigured`,
+        `there isnt a corresponding directory to the selected name, ${templateName} template is misconfigured`,
       )
     }
 
     const name = await getNameFromArgs(args, flags, templateName)
+
     context.log(`${NETLIFYDEVLOG} Creating function ${chalk.cyan.inverse(name)}`)
     const functionPath = ensureFunctionPathIsOk(context, functionsDir, name)
 
@@ -316,33 +362,32 @@ const scaffoldFromTemplate = async function (context, flags, args, functionsDir)
     // SWYX: TODO
     const vars = { NETLIFY_STUFF_TO_REPLACE: 'REPLACEMENT' }
     let hasPackageJSON = false
-    copy(pathToTemplate, functionPath, vars, async (err, createdFiles) => {
-      if (err) throw err
-      createdFiles.forEach((filePath) => {
-        if (filePath.endsWith('.netlify-function-template.js')) return
-        context.log(`${NETLIFYDEVLOG} ${chalk.greenBright('Created')} ${filePath}`)
-        fs.chmodSync(path.resolve(filePath), TEMPLATE_PERMISSIONS)
-        if (filePath.includes('package.json')) hasPackageJSON = true
-      })
-      // delete function template file that was copied over by copydir
-      fs.unlinkSync(path.join(functionPath, '.netlify-function-template.js'))
-      // rename the root function file if it has a different name from default
-      if (name !== templateName) {
-        fs.renameSync(path.join(functionPath, `${templateName}.js`), path.join(functionPath, `${name}.js`))
-      }
-      // npm install
-      if (hasPackageJSON) {
-        const spinner = ora({
-          text: `installing dependencies for ${name}`,
-          spinner: 'moon',
-        }).start()
-        await installDeps(functionPath)
-        spinner.succeed(`installed dependencies for ${name}`)
-      }
 
-      await installAddons(context, addons, path.resolve(functionPath))
-      await handleOnComplete({ context, onComplete })
+    const createdFiles = await copy(pathToTemplate, functionPath, vars)
+    createdFiles.forEach((filePath) => {
+      if (filePath.endsWith('.netlify-function-template.js')) return
+      context.log(`${NETLIFYDEVLOG} ${chalk.greenBright('Created')} ${filePath}`)
+      fs.chmodSync(path.resolve(filePath), TEMPLATE_PERMISSIONS)
+      if (filePath.includes('package.json')) hasPackageJSON = true
     })
+    // delete function template file that was copied over by copydir
+    fs.unlinkSync(path.join(functionPath, '.netlify-function-template.js'))
+    // rename the root function file if it has a different name from default
+    if (name !== templateName) {
+      fs.renameSync(path.join(functionPath, `${templateName}.js`), path.join(functionPath, `${name}.js`))
+    }
+    // npm install
+    if (hasPackageJSON) {
+      const spinner = ora({
+        text: `installing dependencies for ${name}`,
+        spinner: 'moon',
+      }).start()
+      await installDeps(functionPath)
+      spinner.succeed(`installed dependencies for ${name}`)
+    }
+
+    await installAddons(context, addons, path.resolve(functionPath))
+    await handleOnComplete({ context, onComplete })
   }
 }
 
@@ -411,7 +456,7 @@ const installAddons = async function (context, functionAddons, fnPath) {
   const { api, site } = context.netlify
   const siteId = site.id
   if (!siteId) {
-    log('No site id found, please run inside a site folder or `netlify link`')
+    log('No site id found, please run inside a site directory or `netlify link`')
     return false
   }
   log(`${NETLIFYDEVLOG} checking Netlify APIs...`)
@@ -443,7 +488,7 @@ const installAddons = async function (context, functionAddons, fnPath) {
 }
 
 // we used to allow for a --dir command,
-// but have retired that to force every scaffolded function to be a folder
+// but have retired that to force every scaffolded function to be a directory
 const ensureFunctionPathIsOk = function (context, functionsDir, name) {
   const functionPath = path.join(functionsDir, name)
   if (fs.existsSync(functionPath)) {

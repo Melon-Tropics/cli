@@ -1,7 +1,6 @@
 const { flags: flagsLib } = require('@oclif/command')
 const chalk = require('chalk')
 const clean = require('clean-deep')
-const get = require('lodash/get')
 const prettyjson = require('prettyjson')
 
 const Command = require('../../utils/command')
@@ -31,8 +30,7 @@ class StatusCommand extends Command {
     let user
 
     try {
-      accounts = await api.listAccountsForUser()
-      user = await this.netlify.api.getCurrentUser()
+      ;[accounts, user] = await Promise.all([api.listAccountsForUser(), api.getCurrentUser()])
     } catch (error) {
       if (error.status === 401) {
         this.error(
@@ -43,11 +41,8 @@ class StatusCommand extends Command {
 
     const ghuser = this.netlify.globalConfig.get(`users.${current}.auth.github.user`)
     const accountData = {
-      Name: get(user, 'full_name'),
-      // 'Account slug': get(personal, 'slug'),
-      // 'Account id': get(personal, 'id'),
-      // Name: get(personal, 'billing_name'),
-      Email: get(user, 'email'),
+      Name: user.full_name,
+      Email: user.email,
       Github: ghuser,
     }
     const teamsData = {}
@@ -61,13 +56,6 @@ class StatusCommand extends Command {
     const cleanAccountData = clean(accountData)
 
     this.log(prettyjson.render(cleanAccountData))
-
-    if (!site.configPath) {
-      this.logJson({
-        account: cleanAccountData,
-      })
-      this.exit()
-    }
 
     if (!siteId) {
       this.warn('Did you run `netlify link` yet?')

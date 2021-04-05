@@ -1,4 +1,4 @@
-# Netlify CLI
+# ![Netlify CLI](cli.png)
 
 [![Coverage Status](https://codecov.io/gh/netlify/cli/branch/master/graph/badge.svg)](https://codecov.io/gh/netlify/cli)
 [![npm version][npm-img]][npm] [![downloads][dl-img]][dl] [![netlify-status][netlify-img]][netlify] [![dependencies][david-img]][david] [![security][snyk-img]][snyk][![FOSSA Status](https://app.fossa.com/api/projects/custom%2B17679%2Fgit%40github.com%3Anetlify%2Fcli.git.svg?type=shield)](https://app.fossa.com/projects/custom%2B17679%2Fgit%40github.com%3Anetlify%2Fcli.git?ref=badge_shield)
@@ -34,6 +34,7 @@ See the [CLI command line reference](https://cli.netlify.com/commands/) to get s
   * [switch](#switch)
   * [unlink](#unlink)
   * [watch](#watch)
+  * [completion](#completion)
 - [Contributing](#contributing)
 - [Development](#development)
 - [License](#license)
@@ -195,6 +196,16 @@ Unlink a local folder from a Netlify site
 ### [watch](/docs/commands/watch.md)
 
 Watch for site deploy to finish
+
+### [completion](/docs/commands/completion.md)
+
+(Beta) Generate shell completion script
+
+| Subcommand | description  |
+|:--------------------------- |:-----|
+| [`completion:generate:alias`](/docs/commands/completion.md#completiongeneratealias) | Generates completion script for alias  |
+| [`completion:generate`](/docs/commands/completion.md#completiongenerate) | Generates completion script  |
+
 
 
 <!-- AUTO-GENERATED-CONTENT:END -->

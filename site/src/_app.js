@@ -40,6 +40,7 @@ const navOrder = [
   'addons',
   'api',
   'build',
+  'completion',
   'deploy',
   'dev',
   'env',
@@ -53,6 +54,7 @@ const navOrder = [
   'sites',
   'status',
   'unlink',
+  'watch',
   'netlify-dev',
   'contributing',
 ]

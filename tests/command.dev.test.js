@@ -150,7 +150,7 @@ testMatrix.forEach(({ args }) => {
 
   test(testName('should return response from a function with setTimeout', args), async (t) => {
     await withSiteBuilder('site-with-set-timeout-function', async (builder) => {
-      builder.withNetlifyToml({ config: { build: { functions: 'functions' } } }).withFunction({
+      builder.withNetlifyToml({ config: { functions: { directory: 'functions' } } }).withFunction({
         path: 'timeout.js',
         handler: async () => {
           console.log('ding')
@@ -177,7 +177,7 @@ testMatrix.forEach(({ args }) => {
 
   test(testName('should serve function from a subdirectory', args), async (t) => {
     await withSiteBuilder('site-with-from-subdirectory', async (builder) => {
-      builder.withNetlifyToml({ config: { build: { functions: 'functions' } } }).withFunction({
+      builder.withNetlifyToml({ config: { functions: { directory: 'functions' } } }).withFunction({
         path: path.join('echo', 'echo.js'),
         handler: async () => ({
           statusCode: 200,
@@ -197,7 +197,7 @@ testMatrix.forEach(({ args }) => {
   test(testName('should pass .env.development vars to function', args), async (t) => {
     await withSiteBuilder('site-with-env-development', async (builder) => {
       builder
-        .withNetlifyToml({ config: { build: { functions: 'functions' } } })
+        .withNetlifyToml({ config: { functions: { directory: 'functions' } } })
         .withEnvFile({ path: '.env.development', env: { TEST: 'FROM_DEV_FILE' } })
         .withFunction({
           path: 'env.js',
@@ -218,7 +218,7 @@ testMatrix.forEach(({ args }) => {
 
   test(testName('should pass process env vars to function', args), async (t) => {
     await withSiteBuilder('site-with-process-env', async (builder) => {
-      builder.withNetlifyToml({ config: { build: { functions: 'functions' } } }).withFunction({
+      builder.withNetlifyToml({ config: { functions: { directory: 'functions' } } }).withFunction({
         path: 'env.js',
         handler: async () => ({
           statusCode: 200,
@@ -238,7 +238,9 @@ testMatrix.forEach(({ args }) => {
   test(testName('should pass [build.environment] env vars to function', args), async (t) => {
     await withSiteBuilder('site-with-build-environment', async (builder) => {
       builder
-        .withNetlifyToml({ config: { build: { environment: { TEST: 'FROM_CONFIG_FILE' }, functions: 'functions' } } })
+        .withNetlifyToml({
+          config: { build: { environment: { TEST: 'FROM_CONFIG_FILE' } }, functions: { directory: 'functions' } },
+        })
         .withFunction({
           path: 'env.js',
           handler: async () => ({
@@ -261,8 +263,9 @@ testMatrix.forEach(({ args }) => {
       builder
         .withNetlifyToml({
           config: {
-            build: { environment: { TEST: 'DEFAULT_CONTEXT' }, functions: 'functions' },
+            build: { environment: { TEST: 'DEFAULT_CONTEXT' } },
             context: { dev: { environment: { TEST: 'DEV_CONTEXT' } } },
+            functions: { directory: 'functions' },
           },
         })
         .withFunction({
@@ -287,8 +290,9 @@ testMatrix.forEach(({ args }) => {
       builder
         .withNetlifyToml({
           config: {
-            build: { environment: { TEST: 'DEFAULT_CONTEXT' }, functions: 'functions' },
+            build: { environment: { TEST: 'DEFAULT_CONTEXT' } },
             context: { production: { environment: { TEST: 'PRODUCTION_CONTEXT' } } },
+            functions: { directory: 'functions' },
           },
         })
         .withFunction({
@@ -311,7 +315,7 @@ testMatrix.forEach(({ args }) => {
   test(testName('should override .env.development with process env', args), async (t) => {
     await withSiteBuilder('site-with-override', async (builder) => {
       builder
-        .withNetlifyToml({ config: { build: { functions: 'functions' } } })
+        .withNetlifyToml({ config: { functions: { directory: 'functions' } } })
         .withEnvFile({ path: '.env.development', env: { TEST: 'FROM_DEV_FILE' } })
         .withFunction({
           path: 'env.js',
@@ -333,7 +337,9 @@ testMatrix.forEach(({ args }) => {
   test(testName('should override [build.environment] with process env', args), async (t) => {
     await withSiteBuilder('site-with-build-environment-override', async (builder) => {
       builder
-        .withNetlifyToml({ config: { build: { environment: { TEST: 'FROM_CONFIG_FILE' }, functions: 'functions' } } })
+        .withNetlifyToml({
+          config: { build: { environment: { TEST: 'FROM_CONFIG_FILE' } }, functions: { directory: 'functions' } },
+        })
         .withFunction({
           path: 'env.js',
           handler: async () => ({
@@ -353,7 +359,7 @@ testMatrix.forEach(({ args }) => {
 
   test(testName('should override value of the NETLIFY_DEV env variable', args), async (t) => {
     await withSiteBuilder('site-with-netlify-dev-override', async (builder) => {
-      builder.withNetlifyToml({ config: { build: { functions: 'functions' } } }).withFunction({
+      builder.withNetlifyToml({ config: { functions: { directory: 'functions' } } }).withFunction({
         path: 'env.js',
         handler: async () => ({
           statusCode: 200,
@@ -375,7 +381,7 @@ testMatrix.forEach(({ args }) => {
 
   test(testName('should set value of the CONTEXT env variable', args), async (t) => {
     await withSiteBuilder('site-with-context-override', async (builder) => {
-      builder.withNetlifyToml({ config: { build: { functions: 'functions' } } }).withFunction({
+      builder.withNetlifyToml({ config: { functions: { directory: 'functions' } } }).withFunction({
         path: 'env.js',
         handler: async () => ({
           statusCode: 200,
@@ -397,7 +403,7 @@ testMatrix.forEach(({ args }) => {
       builder
         .withNetlifyToml({
           config: {
-            build: { functions: 'functions' },
+            functions: { directory: 'functions' },
             redirects: [{ from: '/api/*', to: '/.netlify/functions/:splat', status: 200 }],
           },
         })
@@ -423,7 +429,7 @@ testMatrix.forEach(({ args }) => {
       builder
         .withNetlifyToml({
           config: {
-            build: { functions: 'functions' },
+            functions: { directory: 'functions' },
             redirects: [{ from: '/api/*', to: '/.netlify/functions/:splat', status: 200 }],
           },
         })
@@ -454,7 +460,7 @@ testMatrix.forEach(({ args }) => {
       builder
         .withNetlifyToml({
           config: {
-            build: { functions: 'functions' },
+            functions: { directory: 'functions' },
             redirects: [{ from: '/api/*', to: '/.netlify/functions/:splat', status: 200 }],
           },
         })
@@ -495,7 +501,7 @@ testMatrix.forEach(({ args }) => {
       builder
         .withNetlifyToml({
           config: {
-            build: { functions: 'functions' },
+            functions: { directory: 'functions' },
             redirects: [{ from: '/api/*', to: '/.netlify/functions/:splat', status: 200 }],
           },
         })
@@ -527,7 +533,7 @@ testMatrix.forEach(({ args }) => {
       builder
         .withNetlifyToml({
           config: {
-            build: { functions: 'functions' },
+            functions: { directory: 'functions' },
             redirects: [{ from: '/api/*', to: '/.netlify/functions/:splat', status: 200 }],
           },
         })
@@ -570,7 +576,7 @@ testMatrix.forEach(({ args }) => {
     await withSiteBuilder('site-with-missing-function', async (builder) => {
       builder.withNetlifyToml({
         config: {
-          build: { functions: 'functions' },
+          functions: { directory: 'functions' },
           redirects: [{ from: '/api/*', to: '/.netlify/functions/:splat', status: 200 }],
         },
       })
@@ -594,7 +600,7 @@ testMatrix.forEach(({ args }) => {
       builder
         .withNetlifyToml({
           config: {
-            build: { functions: 'functions' },
+            functions: { directory: 'functions' },
           },
         })
         .withFunction({
@@ -626,7 +632,7 @@ testMatrix.forEach(({ args }) => {
         })
         .withNetlifyToml({
           config: {
-            build: { functions: 'functions' },
+            functions: { directory: 'functions' },
           },
         })
         .withFunction({
@@ -691,7 +697,7 @@ testMatrix.forEach(({ args }) => {
         })
         .withNetlifyToml({
           config: {
-            build: { functions: 'functions' },
+            functions: { directory: 'functions' },
           },
         })
         .withFunction({
@@ -1036,7 +1042,7 @@ testMatrix.forEach(({ args }) => {
     await withSiteBuilder('site-with-post-no-content-type', async (builder) => {
       builder.withNetlifyToml({
         config: {
-          build: { functions: 'functions' },
+          functions: { directory: 'functions' },
           redirects: [{ from: '/api/*', to: '/other/:splat', status: 200 }],
         },
       })
@@ -1164,7 +1170,7 @@ testMatrix.forEach(({ args }) => {
 
   test(testName('should return 202 ok and empty response for background function', args), async (t) => {
     await withSiteBuilder('site-with-background-function', async (builder) => {
-      builder.withNetlifyToml({ config: { build: { functions: 'functions' } } }).withFunction({
+      builder.withNetlifyToml({ config: { functions: { directory: 'functions' } } }).withFunction({
         path: 'hello-background.js',
         handler: () => {
           console.log("Look at me I'm a background task")
@@ -1371,6 +1377,80 @@ testMatrix.forEach(({ args }) => {
           })
           t.is(response.statusCode, 200)
           t.is(response.body, '<html>index in spanish</html>')
+        })
+      })
+    })
+
+    test(testName(`doesn't hang when sending a application/json POST request to function server`, args), async (t) => {
+      await withSiteBuilder('site-with-functions', async (builder) => {
+        const functionsPort = 6666
+        await builder
+          .withNetlifyToml({ config: { functions: { directory: 'functions' }, dev: { functionsPort } } })
+          .buildAsync()
+
+        await withDevServer({ cwd: builder.directory, args }, async ({ url, port }) => {
+          const response = await gotCatch404(`${url.replace(port, functionsPort)}/test`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: '{}',
+          })
+          t.is(response.statusCode, 404)
+          t.is(response.body, 'Function not found...')
+        })
+      })
+    })
+
+    test(testName('should handle query params in redirects', args), async (t) => {
+      await withSiteBuilder('site-with-query-redirects', async (builder) => {
+        await builder
+          .withContentFile({
+            path: 'public/index.html',
+            content: 'home',
+          })
+          .withNetlifyToml({
+            config: {
+              build: { publish: 'public' },
+              functions: { directory: 'functions' },
+            },
+          })
+          .withRedirectsFile({
+            redirects: [
+              { from: `/api/*`, to: `/.netlify/functions/echo?a=1&a=2`, status: '200' },
+              { from: `/foo`, to: `/`, status: '302' },
+              { from: `/bar`, to: `/?a=1&a=2`, status: '302' },
+              { from: `/test id=:id`, to: `/?param=:id` },
+            ],
+          })
+          .withFunction({
+            path: 'echo.js',
+            handler: async (event) => ({
+              statusCode: 200,
+              body: JSON.stringify(event),
+            }),
+          })
+          .buildAsync()
+
+        await withDevServer({ cwd: builder.directory, args }, async (server) => {
+          const [fromFunction, queryPassthrough, queryInRedirect, withParamMatching] = await Promise.all([
+            got(`${server.url}/api/test?foo=1&foo=2&bar=1&bar=2`).json(),
+            got(`${server.url}/foo?foo=1&foo=2&bar=1&bar=2`, { followRedirect: false }),
+            got(`${server.url}/bar?foo=1&foo=2&bar=1&bar=2`, { followRedirect: false }),
+            got(`${server.url}/test?id=1`, { followRedirect: false }),
+          ])
+
+          // query params should be taken from the request
+          t.deepEqual(fromFunction.multiValueQueryStringParameters, { foo: ['1', '2'], bar: ['1', '2'] })
+
+          // query params should be passed through from the request
+          t.is(queryPassthrough.headers.location, '/?foo=1&foo=2&bar=1&bar=2')
+
+          // query params should be taken from the redirect rule
+          t.is(queryInRedirect.headers.location, '/?a=1&a=2')
+
+          // query params should be taken from the redirect rule
+          t.is(withParamMatching.headers.location, '/?param=1')
         })
       })
     })

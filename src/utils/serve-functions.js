@@ -249,13 +249,15 @@ const createHandler = async function ({ dir, capabilities, warn }) {
   }
 }
 
-const createFormSubmissionHandler = function ({ siteUrl }) {
+const createFormSubmissionHandler = function ({ siteUrl, warn }) {
   return async function formSubmissionHandler(req, res, next) {
     if (req.url.startsWith('/.netlify/') || req.method !== 'POST') return next()
 
     const fakeRequest = new Readable({
       read() {
         this.push(req.body)
+        // TODO: remove when https://github.com/sindresorhus/eslint-plugin-unicorn/issues/1057 is fixed
+        // eslint-disable-next-line unicorn/no-array-push-push
         this.push(null)
       },
     })
@@ -305,10 +307,12 @@ const createFormSubmissionHandler = function ({ siteUrl }) {
           })
         })
       } catch (error) {
-        return console.error(error)
+        warn(error)
+        return next()
       }
     } else {
-      return console.error('Invalid Content-Type for Netlify Dev forms request')
+      warn('Invalid Content-Type for Netlify Dev forms request')
+      return next()
     }
     const data = JSON.stringify({
       payload: {
@@ -370,7 +374,7 @@ const getFunctionsServer = async function ({ dir, siteUrl, capabilities, warn })
     }),
   )
   app.use(bodyParser.raw({ limit: '6mb', type: '*/*' }))
-  app.use(createFormSubmissionHandler({ siteUrl }))
+  app.use(createFormSubmissionHandler({ siteUrl, warn }))
   app.use(
     expressLogging(console, {
       blacklist: ['/favicon.ico'],
